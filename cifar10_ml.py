@@ -71,6 +71,7 @@ import time as time
 
 class CIFAR10Evaluator:
     def __init__(self):
+        """ Initialize training and testing split """
         self.transform = transforms.ToTensor()
         self.train_data = CIFAR10(root='./data', train=True, download=True, transform=self.transform)
         self.test_data = CIFAR10(root='./data', train=False, download=True, transform=self.transform)
@@ -87,17 +88,17 @@ class CIFAR10Evaluator:
         start_time = time.time()
         model.fit(self.X_train, self.y_train)
         duration = time.time() - start_time
-        y_pred = model.predict(self.X_test)
+        y_prediction = model.predict(self.X_test)
 
         print(f"{model_name} training time: {duration:.2f} seconds.")
         print(f"\n{model_name} Classification Report:")
-        print(classification_report(self.y_test, y_pred))
+        print(classification_report(self.y_test, y_prediction))
         print("-----------------------------------------------------")
 
-        self.plot_confusion_matrix(model_name, self.y_test, y_pred)
+        self.plot_confusion_matrix(model_name, self.y_test, y_prediction)
 
-    def plot_confusion_matrix(self, model_name, y_true, y_pred):
-        cm = confusion_matrix(y_true, y_pred)
+    def plot_confusion_matrix(self, model_name, y_true, y_prediction):
+        cm = confusion_matrix(y_true, y_prediction)
         plt.figure(figsize=(8, 6))
         sns.heatmap(cm, annot=True, fmt='d', cmap='YlOrRd')
         plt.title(f'{model_name} Confusion Matrix')
@@ -110,12 +111,17 @@ class CIFAR10Evaluator:
 def main():
     """ Create evaluator object and evaluate each model """
     evaluator = CIFAR10Evaluator()
-    
-    evaluator.evaluate_model(KNeighborsClassifier(n_neighbors=3), "K-Nearest Neighbors")
-    evaluator.evaluate_model(DecisionTreeClassifier(max_depth=20), "Decision Tree")
-    evaluator.evaluate_model(RandomForestClassifier(n_estimators=50, max_depth=20), "Random Forest")
-    evaluator.evaluate_model(SVC(kernel='rbf', C=1), "Support Vector Classifier (SVC)")
-    evaluator.evaluate_model(MLPClassifier(hidden_layer_sizes=(128, 64), max_iter=10), "Multilayer perceptron (MLP)")
+
+    models = [
+        (KNeighborsClassifier(n_neighbors=3), "K-Nearest Neighbors"),
+        (DecisionTreeClassifier(max_depth=20), "Decision Tree"),
+        (RandomForestClassifier(n_estimators=50, max_depth=20), "Random Forest"),
+        (SVC(kernel='rbf', C=1), "Support Vector Classifier (SVC)"),
+        (MLPClassifier(hidden_layer_sizes=(128, 64), max_iter=10), "Multilayer perceptron (MLP)")
+    ]
+
+    for model, model_name in models:
+        evaluator.evaluate_model(model, model_name)
 
 
 if __name__=="__main__":

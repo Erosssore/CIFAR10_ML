@@ -68,89 +68,55 @@ from sklearn.svm import SVC
 from sklearn.neural_network import MLPClassifier
 import time as time
 
-def tensor():
-    """ Pre-processing images """
-    to_tensor = transforms.Compose([transforms.ToTensor()])
-    return to_tensor
 
-def cifar10_training():
-    """ Training split CIFAR10 """
-    training = CIFAR10(root='./data', train=True, download=True, transform=tensor())
-    return training
+class CIFAR10Evaluator:
+    def __init__(self):
+        self.transform = transforms.ToTensor()
+        self.train_data = CIFAR10(root='./data', train=True, download=True, transform=self.transform)
+        self.test_data = CIFAR10(root='./data', train=False, download=True, transform=self.transform)
+        self.X_train, self.y_train = self.data_to_numpy(self.train_data)
+        self.X_test, self.y_test = self.data_to_numpy(self.test_data)
 
-def cifar10_testing():
-    """ Testing split CIFAR10 """
-    testing = CIFAR10(root='./data', train=False, download=True, transform=tensor())
-    return testing
+    def data_to_numpy(self, dataset):
+        X = np.array([img.permute(1, 2, 0).flatten().numpy() for img, _ in dataset])
+        y = np.array([label for _, label in dataset])
+        return X, y
 
-def data_to_numpy(dataset):
-    """
-    return np.array object X, y
+    def evaluate_model(self, model, model_name):
+        print(f"\nTraining {model_name}...")
+        start_time = time.time()
+        model.fit(self.X_train, self.y_train)
+        duration = time.time() - start_time
+        y_pred = model.predict(self.X_test)
 
-    Convert data to NumPy
-    X -> np.array Matplotlib H x W x C^2
-    y -> np.array for 10 labels in dataset
-    """
-    X = np.array([np.array(img.permute(1,2,0)).flatten() for img, _ in dataset])
-    y = np.array([label for _, label in dataset])
-    return X, y
+        print(f"{model_name} training time: {duration:.2f} seconds.")
+        print(f"\n{model_name} Classification Report:")
+        print(classification_report(self.y_test, y_pred))
+        print("-----------------------------------------------------")
 
-def train():
-    """ data_to_numpy(cifar10_training()) -> X_train, y_train """
-    X_train, y_train = data_to_numpy(cifar10_training())
-    return X_train, y_train
+        self.plot_confusion_matrix(model_name, self.y_test, y_pred)
 
-def test():
-    """ data_to_numpy(cifar10_testing()) -> X_train, y_train """
-    X_test, y_test = data_to_numpy(cifar10_testing())
-    return X_test, y_test
-
-def model_training_time(model):
-    """ Generate model speed test. """
-    current_time = time.time()
-    start_time = current_time
-    model.fit(train())
-    duration = current_time - start_time
-
-    return duration
-
-def generate_confusion_matrix(model_name, y_test, y_prediction):
-    """ Generate confusion matrix using plt and sns """
-    cm = confusion_matrix(y_test, y_prediction)
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='YlOrRd')
-    plt.title(f'{model_name} Confusion Matrix')
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.tight_layout()
-    plt.show()
+    def plot_confusion_matrix(self, model_name, y_true, y_pred):
+        cm = confusion_matrix(y_true, y_pred)
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='YlOrRd')
+        plt.title(f'{model_name} Confusion Matrix')
+        plt.xlabel('Predicted')
+        plt.ylabel('True')
+        plt.tight_layout()
+        plt.show()
 
 
-def evaluate_model(model, model_name):
-    """
-    evaluate_model(model, model_name) -> plt
-
-    Evaluate each model for elapsed time, model predictions, and classification reports.
-    """
-    X_test = test()[0]
-    y_test = test()[1]
-
-    print(f"\nTraining {model_name}...")
-    y_prediction = model.predict(X_test)
-    print(f"{model_name} training time: {model_training_time(model):.2f} seconds.")
-
-    # Generate a classification report
-    print(f"\n{model_name} Classification Report:")
-    print(classification_report(y_test, y_prediction))
-
-    print("-----------------------------------------------------")
-
-    generate_confusion_matrix(model_name, y_test, y_prediction)
+def main():
+    """ Create evaluator object and evaluate each model """
+    evaluator = CIFAR10Evaluator()
+    
+    evaluator.evaluate_model(KNeighborsClassifier(n_neighbors=3), "K-Nearest Neighbors")
+    evaluator.evaluate_model(DecisionTreeClassifier(max_depth=20), "Decision Tree")
+    evaluator.evaluate_model(RandomForestClassifier(n_estimators=50, max_depth=20), "Random Forest")
+    evaluator.evaluate_model(SVC(kernel='rbf', C=1), "Support Vector Classifier (SVC)")
+    evaluator.evaluate_model(MLPClassifier(hidden_layer_sizes=(128, 64), max_iter=10), "Multilayer perceptron (MLP)")
 
 
-evaluate_model(KNeighborsClassifier(n_neighbors=3), "K-Nearest Neighbors")
-evaluate_model(DecisionTreeClassifier(max_depth=20), "Decision Tree")
-evaluate_model(RandomForestClassifier(n_estimators=50, max_depth=20), "Random Forest")
-evaluate_model(SVC(kernel='rbf', C=1), "Support Vector Classifier (SVC)")
-evaluate_model(MLPClassifier(hidden_layer_sizes=(128, 64), max_iter=10), "Multilayer perceptron (MLP)")
-
+if __name__=="__main__":
+    main()
